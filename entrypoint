@@ -1,0 +1,58 @@
+#!/bin/bash
+
+: ${USER:=sync}
+: ${UID:=501}
+: ${GROUP:=sync}
+: ${GID:=501}
+: ${SRC:=/source}
+: ${DST:=/destination}
+: ${VERBOSE:=false}
+
+
+if ! id -u $USER > /dev/null 2>&1; then
+	getent group $GID
+	if [ "?$" != "2" ]; then
+		gname=`getent group $GID | cut -d: -f1`
+		groupmod -g 9999 $gname
+	fi;
+
+	addgroup -g $GID -S $GROUP
+	adduser -u $UID -D -S -G $GROUP $USER
+	chown $USER:$GROUP $SRC
+	ls -lah $DST
+	chown $USER:$GROUP $DST
+	ls -lah $DST
+fi;
+
+HOME=$(getent passwd "$USER" | cut -d: -f6)
+
+if [ -n "$INOTIFY_WATCHES" ]; then
+	echo fs.inotify.max_user_watches=$INOTIFY_WATCHES >> /etc/sysctl.conf && sysctl -p
+fi;
+
+mkdir -p $HOME/.unison
+chown -R $USER:$GROUP $HOME/.unison
+
+echo "
+root = $SRC
+root = $DST
+
+auto=true
+backups=false
+batch=true
+contactquietly=true
+fastcheck=true
+maxthreads=10
+nodeletion=$SRC
+prefer=newer
+repeat=watch
+silent=$VERBOSE
+
+ignore = Path .git/*
+ignore = Path .idea/*
+
+$UNISON_ADDITIONAL_CONFIG
+
+" > ${HOME}/.unison/sync.prf
+
+su -c "unison sync" -s /bin/bash ${USER}
