@@ -6,8 +6,44 @@
 : ${GID:=501}
 : ${SRC:=/source}
 : ${DST:=/destination}
-: ${VERBOSE:=false}
 
+: ${VERBOSE:=false}
+: ${INIT_SYNC:=false}
+: ${INIT_SYNC_DIR:=/shared}
+: ${INIT_SYNC_FINISHED_FILE:=init_done}
+
+rm -rf $INIT_SYNC_DIR/$INIT_SYNC_FINISHED_FILE
+
+generate_unison_prf() {
+	filename="$1"
+	: {$2:=true}
+	watch=""
+	if [ $2 == true ]; then
+		watch="repeat=watch"
+	fi;
+
+	echo "
+	root = $SRC
+	root = $DST
+
+	auto=true
+	backups=false
+	batch=true
+	contactquietly=true
+	fastcheck=true
+	maxthreads=10
+	nodeletion=$SRC
+	prefer=newer
+	$watch
+	silent=$VERBOSE
+
+	ignore = Path .git/*
+	ignore = Path .idea/*
+
+	$UNISON_ADDITIONAL_CONFIG
+
+	" > ${HOME}/.unison/$filename.prf
+}
 
 if ! id -u $USER > /dev/null 2>&1; then
 	getent group $GID
@@ -19,9 +55,8 @@ if ! id -u $USER > /dev/null 2>&1; then
 	addgroup -g $GID -S $GROUP
 	adduser -u $UID -D -S -G $GROUP $USER
 	chown $USER:$GROUP $SRC
-	ls -lah $DST
 	chown $USER:$GROUP $DST
-	ls -lah $DST
+	chown $USER:$GROUP $INIT_SYNC_DIR
 fi;
 
 HOME=$(getent passwd "$USER" | cut -d: -f6)
@@ -33,26 +68,17 @@ fi;
 mkdir -p $HOME/.unison
 chown -R $USER:$GROUP $HOME/.unison
 
-echo "
-root = $SRC
-root = $DST
+generate_unison_prf sync true
+generate_unison_prf init false
 
-auto=true
-backups=false
-batch=true
-contactquietly=true
-fastcheck=true
-maxthreads=10
-nodeletion=$SRC
-prefer=newer
-repeat=watch
-silent=$VERBOSE
+command=""
+if [ $INIT_SYNC == true ]; then
+	command="unison init; touch $INIT_SYNC_DIR/$INIT_SYNC_FINISHED_FILE && "
+fi;
 
-ignore = Path .git/*
-ignore = Path .idea/*
+command="$command unison sync"
 
-$UNISON_ADDITIONAL_CONFIG
+su -c "$command" -s /bin/bash $USER
 
-" > ${HOME}/.unison/sync.prf
+cat $HOME/.unison/sync.prf
 
-su -c "unison sync" -s /bin/bash ${USER}
