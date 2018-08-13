@@ -11,6 +11,7 @@
 : ${INIT_SYNC:=false}
 : ${INIT_SYNC_DIR:=/shared}
 : ${INIT_SYNC_FINISHED_FILE:=init_done}
+: ${UNISON_MAX_THREADS:=10}
 
 rm -rf $INIT_SYNC_DIR/$INIT_SYNC_FINISHED_FILE
 
@@ -31,7 +32,7 @@ generate_unison_prf() {
 	batch=true
 	contactquietly=true
 	fastcheck=true
-	maxthreads=10
+	maxthreads=$UNISON_MAX_THREADS
 	nodeletion=$SRC
 	prefer=newer
 	$watch
