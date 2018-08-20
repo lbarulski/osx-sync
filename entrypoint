@@ -55,10 +55,11 @@ if ! id -u $USER > /dev/null 2>&1; then
 
 	addgroup -g $GID -S $GROUP
 	adduser -u $UID -D -S -G $GROUP $USER
-	chown $USER:$GROUP $SRC
-	chown $USER:$GROUP $DST
-	chown $USER:$GROUP $INIT_SYNC_DIR
 fi;
+
+chown $USER:$GROUP $SRC
+chown $USER:$GROUP $DST
+chown $USER:$GROUP $INIT_SYNC_DIR
 
 HOME=$(getent passwd "$USER" | cut -d: -f6)
 
